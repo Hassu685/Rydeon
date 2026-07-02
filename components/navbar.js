@@ -19,7 +19,9 @@ export default function Navbar() {
         { name: "Contact Us", path: "/contact" },
     ];
 
-    const isHome = pathname === "/";
+    // Pages that always need a solid navbar (light background, no dark hero)
+    const alwaysSolidPages = ["/book-ride"];
+    const forceSolid = alwaysSolidPages.includes(pathname);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -35,9 +37,9 @@ export default function Navbar() {
         };
     }, [open]);
 
-    // Only the home page gets the transparent-over-hero treatment.
-    // Every other page always shows the solid white navbar.
-    const isWhite = open || scrolled || !isHome;
+    // Every page behaves like Home (transparent → white on scroll),
+    // except pages listed in alwaysSolidPages, which are always solid white.
+    const isWhite = open || scrolled || forceSolid;
 
     return (
         <motion.header
@@ -56,17 +58,14 @@ export default function Navbar() {
             <nav className="max-w-7xl mx-auto py-5 flex items-center justify-between px-6 md:px-10">
                 {/* Logo */}
                 <Link href="/" className="group relative">
-                    <motion.h1
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
+                    <h1
                         className={`text-3xl md:text-4xl font-extrabold tracking-tight transition-colors duration-300 ${isWhite
                                 ? "bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
                                 : "text-white"
                             }`}
                     >
                         Rydeon
-                    </motion.h1>
+                    </h1>
                     <span
                         className={`absolute -bottom-1 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-300 rounded-full ${isWhite ? "bg-indigo-500" : "bg-white"
                             }`}
