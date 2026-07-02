@@ -14,12 +14,6 @@ const fadeUp = {
 
 /* Inline SVG icons — no external icon library dependency */
 const Social = {
-    Web: (p) => (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" {...p}>
-            <circle cx="12" cy="12" r="9" />
-            <path d="M3 12h18M12 3c2.5 2.7 4 6 4 9s-1.5 6.3-4 9c-2.5-2.7-4-6-4-9s1.5-6.3 4-9Z" />
-        </svg>
-    ),
     Facebook: (p) => (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" {...p}>
             <path d="M14 9h2.5V6h-2.5c-1.9 0-3.5 1.6-3.5 3.5V11H8v3h2.5v6h3v-6H16l.5-3h-3V9.7c0-.4.3-.7.5-.7Z" strokeLinejoin="round" />
@@ -61,7 +55,6 @@ const companyLinks = [
 const supportLinks = ["Contact Us", "Safety", "FAQs"];
 
 const socials = [
-    { Icon: Social.Web, label: "Website" },
     { Icon: Social.Facebook, label: "Facebook" },
     { Icon: Social.Instagram, label: "Instagram" },
     { Icon: Social.X, label: "X" },
