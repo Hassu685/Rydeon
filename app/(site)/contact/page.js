@@ -1,7 +1,5 @@
 import React from 'react';
-import ContactPage from '../../components/contact';
-import Navbar from '../../components/navbar';
-import Footer from '../../components/footer';
+import ContactPage from '../../../components/contact';
 
 export const metadata = {
   title: "Contact",
@@ -10,9 +8,7 @@ export const metadata = {
 const page = () => {
     return (
         <>
-        <Navbar/>
         <ContactPage/>
-        <Footer/>
         </>
     );
 }

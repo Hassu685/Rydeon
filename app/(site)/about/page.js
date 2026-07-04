@@ -1,7 +1,5 @@
 import React from 'react';
-import AboutPage from '../../components/about';
-import Navbar from '../../components/navbar';
-import Footer from '../../components/footer';
+import AboutPage from '../../../components/about';
 
 export const metadata = {
   title: "About",
@@ -10,9 +8,7 @@ export const metadata = {
 const page = () => {
     return (
         <>
-            <Navbar />
             <AboutPage />
-            <Footer />
         </>
     );
 }
