@@ -13,6 +13,7 @@ import {
     LogOut,
     X,
 } from "lucide-react";
+import { useDriver } from "@/contexts/drivercontext";
 
 const navItems = [
     { name: "Dashboard", icon: LayoutDashboard, path: "/driver-dashboard" },
@@ -23,8 +24,19 @@ const navItems = [
     { name: "Settings", icon: Settings, path: "/settings" },
 ];
 
+function getInitials(name) {
+    if (!name) return "?";
+    return name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+}
+
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
     const pathname = usePathname();
+    const { driver, logout } = useDriver();
 
     return (
         <>
@@ -50,13 +62,15 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                 <div className="px-6 py-5 border-b border-white/10">
                     <div className="flex items-center gap-3">
                         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-bold">
-                            HK
+                            {getInitials(driver?.name)}
                         </div>
-                        <div>
-                            <p className="text-sm font-semibold text-white">Hamza Khan</p>
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">
+                                {driver?.name || "Loading…"}
+                            </p>
                             <div className="flex items-center gap-1 text-xs text-slate-400">
                                 <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                4.92 Rating
+                                {driver?.rating != null ? driver.rating.toFixed(2) : "—"} Rating
                             </div>
                         </div>
                     </div>
@@ -87,14 +101,16 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
                 {/* Logout */}
                 <div className="px-4 py-6 border-t border-white/10">
-                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-red-400 transition-colors duration-200">
+                    <button
+                        onClick={logout}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-red-400 transition-colors duration-200"
+                    >
                         <LogOut className="h-4.5 w-4.5" />
                         Log Out
                     </button>
                 </div>
             </aside>
 
-            {/* Mobile overlay */}
             <AnimatePresence>
                 {sidebarOpen && (
                     <motion.div
