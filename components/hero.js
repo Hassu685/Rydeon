@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 const slides = [
@@ -13,7 +14,9 @@ const slides = [
             </>
         ),
         desc: "Your everyday transport partner, anytime anywhere.",
-        image: "https://images.unsplash.com/photo-1493238792000-8113da705763",
+        // Ask Unsplash for a right-sized, compressed image instead of the full-res original
+        image:
+            "https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=1600&q=60",
     },
 ];
 
@@ -30,26 +33,35 @@ export default function Hero() {
     const slide = slides[0];
 
     return (
-        <section
-            className="relative flex min-h-[100svh] sm:min-h-[85vh] items-center overflow-hidden bg-cover bg-center"
-            style={{
-                backgroundImage: `linear-gradient(rgba(15,23,42,.82), rgba(15,23,42,.72)), url('${slide.image}')`,
-            }}
-        >
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-900/40 to-transparent" />
+        <section className="relative flex min-h-[100svh] sm:min-h-[85vh] items-center overflow-hidden">
+            {/* Background image handled by next/image:
+                - priority preloads it and marks it as the LCP candidate (fixes LCP request discovery)
+                - Next.js auto-generates responsive, compressed, modern-format (webp/avif) variants (fixes image delivery) */}
+            <Image
+                src={slide.image}
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                quality={70}
+                className="object-cover -z-20"
+            />
 
-            {/* Subtle animated glow accents */}
-            <motion.div
-                animate={{ opacity: [0.15, 0.3, 0.15] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -top-20 -right-20 w-60 h-60 sm:w-96 sm:h-96 rounded-full bg-blue-500/20 blur-[90px] sm:blur-[130px]"
+            {/* Dark gradient overlay for text contrast, now a plain div instead of an inline background-image */}
+            <div
+                className="absolute inset-0 -z-10"
+                style={{
+                    background:
+                        "linear-gradient(rgba(15,23,42,.82), rgba(15,23,42,.72))",
+                }}
             />
-            <motion.div
-                animate={{ opacity: [0.2, 0.35, 0.2] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="absolute bottom-0 left-0 w-60 h-60 sm:w-96 sm:h-96 rounded-full bg-indigo-500/20 blur-[90px] sm:blur-[130px]"
-            />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-900/40 to-transparent -z-10" />
+
+            {/* Subtle animated glow accents.
+                Moved from Framer Motion (JS-driven, runs on main thread every frame)
+                to a CSS keyframe animation (GPU-composited, doesn't add to TBT). */}
+            <div className="absolute -top-20 -right-20 w-60 h-60 sm:w-96 sm:h-96 rounded-full bg-blue-500/20 blur-[90px] sm:blur-[130px] animate-glow" />
+            <div className="absolute bottom-0 left-0 w-60 h-60 sm:w-96 sm:h-96 rounded-full bg-indigo-500/20 blur-[90px] sm:blur-[130px] animate-glow [animation-delay:1s]" />
 
             {/* pt-24/28 clears a fixed/sticky navbar so heading is never hidden behind it */}
             <div className="relative w-full max-w-7xl mx-auto px-5 sm:px-6 md:px-8 text-white pt-24 pb-16 sm:pt-16 sm:pb-16 md:py-32">
