@@ -2,18 +2,25 @@
 
 import { usePathname } from "next/navigation";
 import { Bell, Menu, Search } from "lucide-react";
+import { useAdmin } from "@/contexts/AdminContext";
 
 const pageMeta = {
     "/admin-dashboard": { title: "Platform Overview", subtitle: "Real-time snapshot of your entire operation." },
-    "/admin/drivers": { title: "Drivers", subtitle: "Manage driver accounts, approvals and status." },
-    "/admin/riders": { title: "Riders", subtitle: "View and manage all registered riders." },
-    "/admin/bookings": { title: "Bookings", subtitle: "Track and manage all ride bookings." },
-    "/admin/reports": { title: "Reports & Analytics", subtitle: "Platform performance and revenue insights." },
-    "/admin/settings": { title: "Platform Settings", subtitle: "Configure fares, zones and app preferences." },
+    "/drivers": { title: "Drivers", subtitle: "Manage driver accounts, approvals and status." },
+    "/riders": { title: "Riders", subtitle: "View and manage all registered riders." },
+    "/bookings": { title: "Bookings", subtitle: "Track and manage all ride bookings." },
+    "/reports": { title: "Reports & Analytics", subtitle: "Platform performance and revenue insights." },
+    "/admin-settings": { title: "Platform Settings", subtitle: "Configure fares, zones and app preferences." },
 };
+
+function getInitials(name) {
+    if (!name) return "?";
+    return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+}
 
 export default function AdminTopbar({ setSidebarOpen }) {
     const pathname = usePathname();
+    const { admin } = useAdmin();
     const meta = pageMeta[pathname] || { title: "Admin", subtitle: "" };
 
     return (
@@ -43,7 +50,7 @@ export default function AdminTopbar({ setSidebarOpen }) {
                         <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />
                     </button>
                     <div className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-sm font-bold">
-                        AZ
+                        {getInitials(admin?.name)}
                     </div>
                 </div>
             </div>

@@ -5,7 +5,7 @@ import Trip from "@/models/Trip";
 import { getAdminFromRequest } from "@/lib/auth";
 import { parsePagination } from "@/lib/pagination";
 
-// GET /api/admin/trips?page=1&limit=20&status=Completed&driverId=...&from=2026-06-01&to=2026-07-04
+// GET /api/admin/trips?page=1&limit=20&status=Completed&driverId=...&search=...&from=2026-06-01&to=2026-07-04
 export async function GET(req) {
   try {
     await dbConnect();
@@ -18,6 +18,7 @@ export async function GET(req) {
     const driverId = searchParams.get("driverId");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const search = searchParams.get("search");
 
     if (driverId && !mongoose.isValidObjectId(driverId)) {
       return NextResponse.json({ error: "driverId is not a valid id" }, { status: 400 });
@@ -26,6 +27,12 @@ export async function GET(req) {
     const filter = {};
     if (status) filter.status = status;
     if (driverId) filter.driverId = driverId;
+    if (search) {
+      filter.$or = [
+        { tripCode: { $regex: search, $options: "i" } },
+        { riderName: { $regex: search, $options: "i" } },
+      ];
+    }
     if (from || to) {
       filter.createdAt = {};
       if (from) {

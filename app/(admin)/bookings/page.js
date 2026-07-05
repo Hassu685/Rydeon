@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Search } from "lucide-react";
+import { adminApiFetch } from "@/lib/adminApi";
 
 const fadeUp = {
     hidden: { opacity: 0, y: 22 },
@@ -12,14 +13,6 @@ const fadeUp = {
         transition: { duration: 0.55, delay: i * 0.08, ease: "easeOut" },
     }),
 };
-
-const bookings = [
-    { id: "TRP-9021", rider: "Ayesha Khan", driver: "Hamza Khan", type: "Car Economy", fare: "₹340", status: "Completed", time: "10:24 AM" },
-    { id: "TRP-9020", rider: "Bilal Ahmed", driver: "Tariq Mehmood", type: "Bike", fare: "₹210", status: "Ongoing", time: "10:10 AM" },
-    { id: "TRP-9019", rider: "Sara Malik", driver: "Kashif Iqbal", type: "Rickshaw", fare: "₹280", status: "Cancelled", time: "09:45 AM" },
-    { id: "TRP-9018", rider: "Usman Tariq", driver: "Fahad Ali", type: "Car Premium", fare: "₹520", status: "Completed", time: "09:20 AM" },
-    { id: "TRP-9017", rider: "Fatima Noor", driver: "Hamza Khan", type: "Courier", fare: "₹150", status: "Completed", time: "08:55 AM" },
-];
 
 const statusStyles = {
     Completed: "bg-green-50 text-green-600",
@@ -31,12 +24,46 @@ const filters = ["All", "Completed", "Ongoing", "Cancelled"];
 
 export default function AdminBookingsPage() {
     const [activeFilter, setActiveFilter] = useState("All");
+    const [search, setSearch] = useState("");
+    const [bookings, setBookings] = useState([]);
+    const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const filtered =
-        activeFilter === "All" ? bookings : bookings.filter((b) => b.status === activeFilter);
+    const loadBookings = useCallback(
+        async (page = 1) => {
+            setLoading(true);
+            try {
+                const params = new URLSearchParams({ page: String(page), limit: "20" });
+                if (activeFilter !== "All") params.set("status", activeFilter);
+                if (search.trim()) params.set("search", search.trim());
+
+                const data = await adminApiFetch(`/api/admin/trips?${params.toString()}`);
+                setBookings(data.trips || []);
+                setPagination(data.pagination);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        },
+        [activeFilter, search]
+    );
+
+    useEffect(() => {
+        const timeout = setTimeout(() => loadBookings(1), search ? 400 : 0);
+        return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeFilter, search]);
 
     return (
         <>
+            {error && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm text-red-600">
+                    {error}
+                </div>
+            )}
+
             <motion.div
                 initial="hidden"
                 animate="show"
@@ -62,7 +89,9 @@ export default function AdminBookingsPage() {
                 <div className="relative w-full sm:w-64">
                     <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
-                        placeholder="Search trip ID"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search trip ID or rider name"
                         className="w-full rounded-full border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.08)]"
                     />
                 </div>
@@ -76,37 +105,82 @@ export default function AdminBookingsPage() {
                 className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden"
             >
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[700px]">
+                    <table className="w-full text-sm min-w-[650px]">
                         <thead>
                             <tr className="text-left text-slate-400 text-xs uppercase tracking-wider">
                                 <th className="px-6 py-4 font-medium">Trip ID</th>
                                 <th className="px-4 py-4 font-medium">Rider</th>
                                 <th className="px-4 py-4 font-medium">Driver</th>
-                                <th className="px-4 py-4 font-medium">Type</th>
                                 <th className="px-4 py-4 font-medium">Fare</th>
                                 <th className="px-4 py-4 font-medium">Status</th>
                                 <th className="px-6 py-4 font-medium text-right">Time</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {filtered.map((b) => (
-                                <tr key={b.id} className="hover:bg-slate-50/60 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-slate-900">{b.id}</td>
-                                    <td className="px-4 py-4 text-slate-600">{b.rider}</td>
-                                    <td className="px-4 py-4 text-slate-600">{b.driver}</td>
-                                    <td className="px-4 py-4 text-slate-500">{b.type}</td>
-                                    <td className="px-4 py-4 font-semibold text-slate-900">{b.fare}</td>
-                                    <td className="px-4 py-4">
-                                        <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[b.status]}`}>
-                                            {b.status}
-                                        </span>
+                            {loading ? (
+                                Array.from({ length: 6 }).map((_, i) => (
+                                    <tr key={i}>
+                                        <td colSpan={6} className="px-6 py-4">
+                                            <div className="h-10 rounded-lg bg-slate-100 animate-pulse" />
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : bookings.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-14 text-center text-slate-400">
+                                        No bookings found.
                                     </td>
-                                    <td className="px-6 py-4 text-right text-slate-400">{b.time}</td>
                                 </tr>
-                            ))}
+                            ) : (
+                                bookings.map((b) => (
+                                    <tr key={b._id} className="hover:bg-slate-50/60 transition-colors">
+                                        <td className="px-6 py-4 font-medium text-slate-900">{b.tripCode}</td>
+                                        <td className="px-4 py-4 text-slate-600">{b.riderName}</td>
+                                        <td className="px-4 py-4 text-slate-600">{b.driverId?.name || "—"}</td>
+                                        <td className="px-4 py-4 font-semibold text-slate-900">₹{b.fare}</td>
+                                        <td className="px-4 py-4">
+                                            <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[b.status]}`}>
+                                                {b.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-slate-400">
+                                            {new Date(b.createdAt).toLocaleString([], {
+                                                month: "short",
+                                                day: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            })}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
+
+                {!loading && pagination.pages > 1 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 text-sm text-slate-500">
+                        <span>
+                            Page {pagination.page} of {pagination.pages} · {pagination.total} bookings
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                disabled={pagination.page <= 1}
+                                onClick={() => loadBookings(pagination.page - 1)}
+                                className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:opacity-40"
+                            >
+                                Prev
+                            </button>
+                            <button
+                                disabled={pagination.page >= pagination.pages}
+                                onClick={() => loadBookings(pagination.page + 1)}
+                                className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:opacity-40"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </motion.div>
         </>
     );
