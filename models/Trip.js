@@ -5,6 +5,7 @@ const TripSchema = new mongoose.Schema(
     tripCode: { type: String, required: true, unique: true }, // e.g. TRP-8823
     driverId: { type: mongoose.Schema.Types.ObjectId, ref: "Driver", required: true, index: true },
     riderName: { type: String, required: true },
+    rideType: { type: String, default: "" },
     pickup: { type: String, required: true },
     drop: { type: String, required: true },
     fare: { type: Number, required: true },

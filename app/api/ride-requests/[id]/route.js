@@ -41,11 +41,17 @@ export async function PUT(req, { params }) {
       tripCode,
       driverId: auth.driverId,
       riderName: request.riderName,
+      rideType: request.rideType,
       pickup: request.pickup,
       drop: request.drop,
       fare: request.estimatedFare,
       status: "Ongoing",
     });
+
+    // Link the request to the trip it spawned, so a public tracking
+    // endpoint can look up "did this booking turn into a ride?" later.
+    request.tripId = trip._id;
+    await request.save();
 
     return NextResponse.json({ request, trip });
   } catch (err) {

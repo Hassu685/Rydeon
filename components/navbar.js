@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ArrowRight } from "lucide-react";
+import { Menu, X, ArrowRight, Car } from "lucide-react";
 
 export default function Navbar() {
     const [open, setOpen] = useState(false);
@@ -60,8 +60,8 @@ export default function Navbar() {
                 <Link href="/" className="group relative">
                     <h1
                         className={`text-3xl md:text-4xl font-extrabold tracking-tight transition-colors duration-300 ${isWhite
-                                ? "bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
-                                : "text-white"
+                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
+                            : "text-white"
                             }`}
                     >
                         Rydeon
@@ -81,12 +81,12 @@ export default function Navbar() {
                                 key={item.path}
                                 href={item.path}
                                 className={`relative px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 ${isWhite
-                                        ? active
-                                            ? "text-indigo-600"
-                                            : "text-slate-700 hover:text-indigo-600"
-                                        : active
-                                            ? "text-white"
-                                            : "text-white/80 hover:text-white"
+                                    ? active
+                                        ? "text-indigo-600"
+                                        : "text-slate-700 hover:text-indigo-600"
+                                    : active
+                                        ? "text-white"
+                                        : "text-white/80 hover:text-white"
                                     }`}
                             >
                                 {item.name}
@@ -104,7 +104,20 @@ export default function Navbar() {
                 </div>
 
                 {/* Desktop actions */}
-                <div className="hidden md:flex items-center gap-3">
+                <div className="hidden md:flex items-center gap-4">
+                    {/* Driver login — deliberately subtle (plain text link) so
+                        "Book Ride" stays the primary rider-facing CTA. */}
+                    <Link
+                        href="/login"
+                        className={`hidden lg:flex items-center gap-1.5 text-sm font-semibold transition-colors duration-300 ${isWhite
+                                ? "text-slate-600 hover:text-blue-600"
+                                : "text-white/80 hover:text-white"
+                            }`}
+                    >
+                        <Car className="h-4 w-4" />
+                        Drive with us
+                    </Link>
+
                     <Link href="/book-ride">
                         <motion.span
                             whileHover={{ scale: 1.04, y: -1 }}
@@ -124,8 +137,8 @@ export default function Navbar() {
                         aria-expanded={open}
                         aria-label="Toggle menu"
                         className={`lg:hidden flex items-center gap-2 px-4 py-2.5 rounded-2xl font-semibold text-sm shadow-lg transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${isWhite
-                                ? "bg-slate-900 text-white hover:bg-slate-800"
-                                : "bg-white text-slate-900 hover:bg-slate-100"
+                            ? "bg-slate-900 text-white hover:bg-slate-800"
+                            : "bg-white text-slate-900 hover:bg-slate-100"
                             }`}
                     >
                         <AnimatePresence mode="wait" initial={false}>
@@ -150,8 +163,8 @@ export default function Navbar() {
                     aria-expanded={open}
                     aria-label="Toggle menu"
                     className={`md:hidden flex items-center justify-center w-11 h-11 rounded-xl shadow-lg transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${isWhite
-                            ? "bg-slate-900 text-white"
-                            : "bg-white text-slate-900"
+                        ? "bg-slate-900 text-white"
+                        : "bg-white text-slate-900"
                         }`}
                 >
                     <AnimatePresence mode="wait" initial={false}>
@@ -202,8 +215,8 @@ export default function Navbar() {
                                             href={item.path}
                                             onClick={() => setOpen(false)}
                                             className={`group flex items-center justify-between py-4 text-lg font-semibold transition-colors duration-300 ${active
-                                                    ? "text-indigo-600"
-                                                    : "text-slate-800 hover:text-indigo-600"
+                                                ? "text-indigo-600"
+                                                : "text-slate-800 hover:text-indigo-600"
                                                 }`}
                                         >
                                             {item.name}
@@ -212,6 +225,26 @@ export default function Navbar() {
                                     </motion.div>
                                 );
                             })}
+
+                            {/* Driver login — mobile dropdown */}
+                            <motion.div
+                                variants={{
+                                    closed: { opacity: 0, x: -12 },
+                                    open: { opacity: 1, x: 0 },
+                                }}
+                            >
+                                <Link
+                                    href="/login"
+                                    onClick={() => setOpen(false)}
+                                    className="group flex items-center justify-between py-4 text-lg font-semibold text-slate-800 hover:text-indigo-600 transition-colors duration-300"
+                                >
+                                    <span className="flex items-center gap-2.5">
+                                        <Car className="w-4.5 h-4.5" />
+                                        Drive with Rydeon
+                                    </span>
+                                    <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+                                </Link>
+                            </motion.div>
 
                             <motion.div
                                 variants={{

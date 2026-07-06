@@ -1,18 +1,19 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     MapPin,
     Navigation,
-    Calendar,
-    Clock,
     User,
     Phone,
     CheckCircle2,
     ArrowRight,
+    Loader2,
+    Clock,
+    AlertCircle,
 } from "lucide-react";
 import { rideOptions } from "../lib/ride-options";
 
@@ -33,14 +34,15 @@ function BookRideContent() {
     const [form, setForm] = useState({
         pickup: "",
         dropoff: "",
-        date: "",
-        time: "",
         name: "",
         phone: "",
     });
-    const [submitted, setSubmitted] = useState(false);
 
-    // Pre-select ride type coming from a card's "Book Ride" link (?type=bike)
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState(null);
+    const [booking, setBooking] = useState(null); // { bookingId, status, estimatedFare, driverName, tripCode }
+    const pollRef = useRef(null);
+
     useEffect(() => {
         if (typeParam && rideOptions.some((r) => r.slug === typeParam)) {
             setSelected(typeParam);
@@ -54,25 +56,75 @@ function BookRideContent() {
         setForm((f) => ({ ...f, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    async function handleSubmit(e) {
         e.preventDefault();
-        setSubmitted(true);
-    };
+        setSubmitError(null);
+        setSubmitting(true);
 
-    const resetBooking = () => {
-        setSubmitted(false);
-        setForm({ pickup: "", dropoff: "", date: "", time: "", name: "", phone: "" });
-    };
+        try {
+            const res = await fetch("/api/bookings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    riderName: form.name,
+                    phone: form.phone,
+                    pickup: form.pickup,
+                    drop: form.dropoff,
+                    rideType: selected,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Something went wrong");
+
+            setBooking({
+                bookingId: data.bookingId,
+                status: data.status,
+                estimatedFare: data.estimatedFare,
+                driverName: null,
+                tripCode: null,
+            });
+        } catch (err) {
+            setSubmitError(err.message);
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    // Poll for driver acceptance every 3s while a booking is pending
+    useEffect(() => {
+        if (!booking || booking.status !== "pending") return;
+
+        pollRef.current = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/bookings/${booking.bookingId}`);
+                const data = await res.json();
+                if (!res.ok) return;
+
+                setBooking((b) => (b ? { ...b, ...data } : b));
+
+                if (data.status !== "pending") {
+                    clearInterval(pollRef.current);
+                }
+            } catch {
+                // silently retry on next tick
+            }
+        }, 3000);
+
+        return () => clearInterval(pollRef.current);
+    }, [booking?.bookingId, booking?.status]);
+
+    function resetBooking() {
+        setBooking(null);
+        setSubmitError(null);
+        setForm({ pickup: "", dropoff: "", name: "", phone: "" });
+    }
 
     return (
         <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50 py-16 sm:py-20 px-5 sm:px-6">
-            {/* Background glow */}
             <div className="absolute -top-32 -left-32 w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-blue-500/10 blur-[100px] sm:blur-[140px]" />
             <div className="absolute bottom-0 right-0 w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-indigo-500/10 blur-[100px] sm:blur-[140px]" />
 
             <div className="relative max-w-6xl mx-auto">
-
-                {/* Heading */}
                 <motion.div
                     initial="hidden"
                     animate="show"
@@ -102,36 +154,76 @@ function BookRideContent() {
                         custom={2}
                         className="mt-3 sm:mt-4 text-sm sm:text-base text-slate-500 max-w-xl mx-auto"
                     >
-                        Pick a ride type, add your trip details, and we'll get a driver to you in minutes.
+                        Pick a ride type, add your trip details, and we'll get a driver to you
+                        right away. (Scheduled bookings for later aren't supported yet — this
+                        books an immediate ride.)
                     </motion.p>
                 </motion.div>
 
                 <AnimatePresence mode="wait">
-                    {submitted ? (
-                        /* ---------- SUCCESS STATE ---------- */
+                    {booking ? (
+                        /* ---------- STATUS / SUCCESS STATE ---------- */
                         <motion.div
-                            key="success"
+                            key="status"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
                             className="max-w-xl mx-auto rounded-3xl border border-blue-100 bg-white p-8 sm:p-10 text-center shadow-xl shadow-blue-900/5"
                         >
-                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
-                                <CheckCircle2 className="h-9 w-9 text-green-600" />
-                            </div>
-                            <h2 className="mt-5 text-2xl font-bold text-slate-900">
-                                Ride Requested!
-                            </h2>
-                            <p className="mt-2 text-slate-500 text-sm sm:text-base">
-                                We're finding you a nearby <span className="font-semibold text-slate-700">{activeRide.title}</span> driver.
-                                You'll get a confirmation shortly.
-                            </p>
+                            {booking.status === "pending" && (
+                                <>
+                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50">
+                                        <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                                    </div>
+                                    <h2 className="mt-5 text-2xl font-bold text-slate-900">
+                                        Finding you a driver…
+                                    </h2>
+                                    <p className="mt-2 text-slate-500 text-sm sm:text-base">
+                                        We've sent your request to a nearby{" "}
+                                        <span className="font-semibold text-slate-700">{activeRide.title}</span> driver.
+                                        This page will update automatically once they accept.
+                                    </p>
+                                </>
+                            )}
+
+                            {booking.status === "accepted" && (
+                                <>
+                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
+                                        <CheckCircle2 className="h-9 w-9 text-green-600" />
+                                    </div>
+                                    <h2 className="mt-5 text-2xl font-bold text-slate-900">
+                                        Ride Confirmed!
+                                    </h2>
+                                    <p className="mt-2 text-slate-500 text-sm sm:text-base">
+                                        <span className="font-semibold text-slate-700">
+                                            {booking.driverName}
+                                        </span>{" "}
+                                        is on the way.
+                                    </p>
+                                </>
+                            )}
+
+                            {booking.status === "declined" && (
+                                <>
+                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+                                        <AlertCircle className="h-8 w-8 text-red-600" />
+                                    </div>
+                                    <h2 className="mt-5 text-2xl font-bold text-slate-900">
+                                        Driver Unavailable
+                                    </h2>
+                                    <p className="mt-2 text-slate-500 text-sm sm:text-base">
+                                        That driver couldn't take this ride. Please try booking again.
+                                    </p>
+                                </>
+                            )}
 
                             <div className="mt-6 rounded-2xl bg-[#f8fbff] border border-blue-50 p-5 text-left text-sm text-slate-600 space-y-2">
                                 <p><span className="font-semibold text-slate-800">Pickup:</span> {form.pickup || "—"}</p>
                                 <p><span className="font-semibold text-slate-800">Drop-off:</span> {form.dropoff || "—"}</p>
-                                <p><span className="font-semibold text-slate-800">Date & Time:</span> {form.date || "—"} {form.time}</p>
-                                <p><span className="font-semibold text-slate-800">Estimated Fare:</span> {activeRide.fareRange}</p>
+                                <p><span className="font-semibold text-slate-800">Estimated Fare:</span> ₹{booking.estimatedFare}</p>
+                                {booking.tripCode && (
+                                    <p><span className="font-semibold text-slate-800">Trip Code:</span> {booking.tripCode}</p>
+                                )}
                             </div>
 
                             <button
@@ -151,8 +243,12 @@ function BookRideContent() {
                             exit={{ opacity: 0 }}
                             className="grid lg:grid-cols-3 gap-8 sm:gap-10"
                         >
-                            {/* LEFT — steps */}
                             <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-6 sm:space-y-8">
+                                {submitError && (
+                                    <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm text-red-600">
+                                        {submitError}
+                                    </div>
+                                )}
 
                                 {/* Step 1 — Ride type */}
                                 <motion.div
@@ -175,11 +271,10 @@ function BookRideContent() {
                                                     type="button"
                                                     key={ride.slug}
                                                     onClick={() => setSelected(ride.slug)}
-                                                    className={`group relative rounded-2xl border p-3 sm:p-4 text-left transition-all duration-300 ${
-                                                        isActive
+                                                    className={`group relative rounded-2xl border p-3 sm:p-4 text-left transition-all duration-300 ${isActive
                                                             ? "border-blue-600 bg-blue-50/70 shadow-md shadow-blue-600/10"
                                                             : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {isActive && (
                                                         <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600">
@@ -188,12 +283,7 @@ function BookRideContent() {
                                                     )}
 
                                                     <div className="relative h-16 sm:h-20 w-full overflow-hidden rounded-xl bg-slate-100">
-                                                        <Image
-                                                            src={ride.image}
-                                                            alt={ride.title}
-                                                            fill
-                                                            className="object-cover"
-                                                        />
+                                                        <Image src={ride.image} alt={ride.title} fill className="object-cover" />
                                                     </div>
 
                                                     <div className="mt-2.5 sm:mt-3 flex items-center gap-1.5">
@@ -211,7 +301,7 @@ function BookRideContent() {
                                     </div>
                                 </motion.div>
 
-                                {/* Step 2 — Trip details */}
+                                {/* Step 2 — Trip details (no date/time — immediate dispatch only) */}
                                 <motion.div
                                     initial="hidden"
                                     animate="show"
@@ -248,29 +338,9 @@ function BookRideContent() {
                                             />
                                         </div>
 
-                                        <div className="grid sm:grid-cols-2 gap-4">
-                                            <div className="relative">
-                                                <Calendar className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
-                                                <input
-                                                    type="date"
-                                                    name="date"
-                                                    value={form.date}
-                                                    onChange={handleChange}
-                                                    required
-                                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 py-3 text-sm sm:text-base text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(37,99,235,0.08)]"
-                                                />
-                                            </div>
-                                            <div className="relative">
-                                                <Clock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
-                                                <input
-                                                    type="time"
-                                                    name="time"
-                                                    value={form.time}
-                                                    onChange={handleChange}
-                                                    required
-                                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 py-3 text-sm sm:text-base text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(37,99,235,0.08)]"
-                                                />
-                                            </div>
+                                        <div className="flex items-center gap-2 rounded-xl bg-blue-50/60 px-4 py-3 text-xs text-blue-700">
+                                            <Clock className="h-4 w-4 shrink-0" />
+                                            This books a ride right now — scheduled pickups aren't supported yet.
                                         </div>
                                     </div>
                                 </motion.div>
@@ -320,11 +390,13 @@ function BookRideContent() {
                                     variants={fadeUp}
                                     custom={6}
                                     type="submit"
-                                    whileHover={{ scale: 1.01 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    className="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 py-4 text-base sm:text-lg font-semibold text-white shadow-lg shadow-blue-900/20 transition-shadow hover:shadow-blue-500/40"
+                                    disabled={submitting}
+                                    whileHover={{ scale: submitting ? 1 : 1.01 }}
+                                    whileTap={{ scale: submitting ? 1 : 0.98 }}
+                                    className="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 py-4 text-base sm:text-lg font-semibold text-white shadow-lg shadow-blue-900/20 transition-shadow hover:shadow-blue-500/40 disabled:opacity-60 flex items-center justify-center gap-2"
                                 >
-                                    Confirm & Book {activeRide.title} →
+                                    {submitting && <Loader2 className="h-5 w-5 animate-spin" />}
+                                    {submitting ? "Finding a driver…" : `Confirm & Book ${activeRide.title} →`}
                                 </motion.button>
                             </form>
 
@@ -342,12 +414,7 @@ function BookRideContent() {
                                     </h3>
 
                                     <div className="relative h-32 sm:h-36 w-full overflow-hidden rounded-2xl bg-[#f8fbff]">
-                                        <Image
-                                            src={activeRide.image}
-                                            alt={activeRide.title}
-                                            fill
-                                            className="object-contain p-4"
-                                        />
+                                        <Image src={activeRide.image} alt={activeRide.title} fill className="object-contain p-4" />
                                     </div>
 
                                     <div className="mt-4 flex items-center justify-between">
@@ -382,6 +449,10 @@ function BookRideContent() {
                                             </span>
                                         </div>
                                     </div>
+                                    <p className="mt-4 text-[11px] text-slate-400">
+                                        Final fare is calculated from the platform's base rate — the
+                                        exact number shows up once your ride is confirmed.
+                                    </p>
                                 </div>
 
                                 <div className="mt-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-white shadow-lg">
